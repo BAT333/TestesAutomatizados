@@ -1,0 +1,874 @@
+--------------------------------------------Tecnologia Usada-----------------------------------------------------------------------
+JUnit na versão 5
+Mockito
+Spring Boot
+--------------------------------------------Testes metodo------------------------------------------------
+Se vc clicar no seu teclado alt e insert, vai aparece uma telinha
+clicando em test, vai cria uma class de teste,
+Claro se vc tiver as devidas dependencias instaladas, citada ali encima,
+
+
+@Test -> aqui vc avisa para sua aplicação que esse metodo é cenario de test
+@DisplayName("Teste De Probabilida de Adocao 01 ") -> aqui vc da um nome para esse cenario de teste
+ Ex:
+    @Test
+    @DisplayName("Teste De Probabilida de Adocao 01 ")
+    void cenario01(){
+
+    }
+Assertions.assertEquals-> Uma função do proprio JUnit para verificar se retorno é mesmo
+primeiro passa oq vc espera receber e depois oq vc recebeu, e verifica
+
+
+EX:
+@Test
+    @DisplayName("Teste De Probabilida de Adocao 01 ")
+    void cenario01(){
+        Abrigo abrigo = new Abrigo(new CadastroAbrigoDto(
+                "Abrigo feliz",
+                "94999999999",
+                "abrigofeliz@email.com.br"
+        ));
+        Pet pet = new Pet(new CadastroPetDto(
+                TipoPet.GATO,
+                "Miau",
+                "Siames",
+                4,
+                "Cinza",
+                4.0f
+        ), abrigo);
+        CalculadoraProbabilidadeAdocao calcular = new CalculadoraProbabilidadeAdocao();
+        ProbabilidadeAdocao adocao = calcular.calcular(pet);
+
+        Assertions.assertEquals(ProbabilidadeAdocao.ALTA,adocao);
+
+    }
+-Se tem fazer todos teste possivel com aquele cenario
+
+
+assertDoesNotThrow-> aqui para verificar que não surgiu nem um erro nesse trows
+
+------------------------------------------Mockito validação----------------------------------------------------
+
+case que depende do spring tem dependecias
+para isso precisamos simular algo, vamos usar mockito para acessar as dependencias deles
+
+@Mock-> que vai simular que esta entrando na dependenicia
+private PetRepository petRepository;
+@InjectMocks-> aqui faz injeção de dependencia, por que essa class é um da parte do spring ela precisa desta injeção de dependecia
+como fosse simulando o Autowired
+
+    @InjectMocks
+    private ValidacaoPetDisponivel disponivel;
+    @Mock
+    private PetRepository petRepository;
+
+    @ExtendWith(MockitoExtension.class)
+    essa coloca encima da class, ele que mokito vai fazer todas as injeção de dependencia e controlar tudo
+
+BDDMockito.given(petRepository.getReferenceById(dto.idPet())).willReturn(pet);
+BDDMockito.given(pet.getAdotado()).willReturn(false);
+
+BDDMockito-> uma class do mockito que trabalha com retorno
+given -> com esse dado fornecido vc tem que dar esse tal retorno (willReturn)
+willReturn-> retorno que ele deve dar
+
+assertThrows-> aqui para saber qual validação espera ser retornada erro
+assertThrowsExactly-> ser essa extamente essa excecoes
+
+ex:
+
+package br.com.alura.adopet.api.validacoes;
+
+import br.com.alura.adopet.api.dto.SolicitacaoAdocaoDto;
+import br.com.alura.adopet.api.exception.ValidacaoException;
+import br.com.alura.adopet.api.model.Pet;
+import br.com.alura.adopet.api.repository.PetRepository;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.BDDMockito;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.junit.jupiter.api.Assertions.*;
+@ExtendWith(MockitoExtension.class)
+class ValidacaoPetDisponivelTest {
+    @InjectMocks
+    private ValidacaoPetDisponivel disponivel;
+    @Mock
+    private PetRepository petRepository;
+    @Mock
+    private SolicitacaoAdocaoDto dto;
+    @Mock
+    private Pet pet;
+
+
+    @Test
+    @DisplayName("DEVERIA PERMITIR SOLICITAÇÃO DE ADOÇÃO PET")
+    void cenario01(){
+
+        BDDMockito.given(petRepository.getReferenceById(dto.idPet())).willReturn(pet);
+        BDDMockito.given(pet.getAdotado()).willReturn(false);
+
+
+        Assertions.assertDoesNotThrow(()->disponivel.validar(dto));
+    }
+    @Test
+    @DisplayName("DEVERIA NEGAR SOLICITAÇÃO DE ADOÇÃO PET")
+    void cenario02(){
+
+        BDDMockito.given(petRepository.getReferenceById(dto.idPet())).willReturn(pet);
+        BDDMockito.given(pet.getAdotado()).willReturn(true);
+
+
+        Assertions.assertThrows(ValidacaoException.class,()->disponivel.validar(dto));
+    }
+
+
+}
+
+
+Testar uma classe que possui dependências;
+Funcionam os mocks em testes automatizados;
+Utilizar o Mockito como biblioteca de mocks em Java;
+Declarar mocks com a anotação @Mock do Mockito;
+Indicar atributos a serem instanciados e ter suas dependências substituídas pelos mocks, via anotação @InjectMocks;
+Manipular comportamentos de objetos mocks com o Mockito, via método BDDMockito.given.
+----------------------------------------------service------------------------------------------------------------------------------------------------------------------
+mokito
+then(petRepository).should().save(any());
+then-> verificar que no petRepository
+should()-> chamou tal metodo
+.save(any())-> metodo save
+any()-> com qualquer metodo
+
+==========salvando com tals metodos sendo chamado
+
+ @Captor
+ private ArgumentCaptor<Adocao> argumentCaptor;-> isso vai captura argumentos
+ e vc pode passa na hora do save, no lugar any()
+ then(repository).should().save(argumentCaptor.capture());
+ Adocao adocao = argumentCaptor.capture();
+
+
+
+
+
+
+
+
+ package br.com.alura.adopet.api.service;
+
+ import br.com.alura.adopet.api.dto.SolicitacaoAdocaoDto;
+ import br.com.alura.adopet.api.model.Abrigo;
+ import br.com.alura.adopet.api.model.Adocao;
+ import br.com.alura.adopet.api.model.Pet;
+ import br.com.alura.adopet.api.model.Tutor;
+ import br.com.alura.adopet.api.repository.AdocaoRepository;
+ import br.com.alura.adopet.api.repository.PetRepository;
+ import br.com.alura.adopet.api.repository.TutorRepository;
+ import br.com.alura.adopet.api.validacoes.ValidacaoSolicitacaoAdocao;
+ import org.junit.jupiter.api.Assertions;
+ import org.junit.jupiter.api.DisplayName;
+ import org.junit.jupiter.api.Test;
+ import org.junit.jupiter.api.extension.ExtendWith;
+ import org.mockito.*;
+ import org.mockito.junit.jupiter.MockitoExtension;
+ import org.springframework.beans.factory.annotation.Autowired;
+
+ import java.util.List;
+
+ import static org.junit.jupiter.api.Assertions.*;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.BDDMockito.then;
+
+ @ExtendWith(MockitoExtension.class)
+ class AdocaoServiceTest {
+
+
+     @InjectMocks
+     private AdocaoService service;
+
+     @Mock
+     private AdocaoRepository repository;
+
+     @Mock
+     private PetRepository petRepository;
+
+     @Mock
+     private TutorRepository tutorRepository;
+
+     @Mock
+     private EmailService emailService;
+
+     @Mock
+     private List<ValidacaoSolicitacaoAdocao> validacoes;
+
+     @Mock
+     private Pet pet;
+
+     @Mock
+     private Tutor tutor;
+
+     @Mock
+     private Abrigo abrigo;
+
+     private SolicitacaoAdocaoDto dto;
+     @Captor
+     private ArgumentCaptor<Adocao> argumentCaptor;
+
+
+     @Test
+     @DisplayName("Salvando infos")
+     void cenario01() {
+         this.dto = new SolicitacaoAdocaoDto(10L,20L,"MOTIVO");
+         BDDMockito.given(petRepository.getReferenceById(dto.idPet())).willReturn(pet);
+         BDDMockito.given(tutorRepository.getReferenceById(dto.idTutor())).willReturn(tutor);
+         BDDMockito.given(pet.getAbrigo()).willReturn(abrigo);
+         service.solicitar(dto);
+         then(repository).should().save(argumentCaptor.capture());
+         Adocao adocao = argumentCaptor.getValue();
+         Assertions.assertEquals(pet,adocao.getPet());
+         Assertions.assertEquals(tutor,adocao.getTutor());
+         Assertions.assertEquals(dto.motivo(),adocao.getMotivo());
+     }
+ }
+
+ obs: se vc for dar new, em uma class dentro do test, não pode usar @mock, por que pode dar conflito
+ sim ordem importa
+
+ tem hora que não da para usar o moke por que precisamos simular com coisa real
+ @Spy para isso temos @Spy que ele simular como fosse real ele pode mudar comportamento
+
+
+
+ basicamente para uma lista ser manipulada para validar tudo mais,
+ precisa do @Spy
+
+ intenciar oq vc que validar, tipo validador 1  e 2
+ com @Mock
+ depois add validador na lista vazia
+ e ver se passou
+
+ ex:
+
+
+
+
+
+
+
+
+
+
+
+ @Spy
+     private List<ValidacaoSolicitacaoAdocao> validacoes  = new ArrayList<>();
+     @Mock
+     private ValidacaoSolicitacaoAdocao validador1;
+
+     @Mock
+     private ValidacaoSolicitacaoAdocao validador2;
+
+
+       @Test
+         @DisplayName("Se os validadores ta sendo chamado")
+         void cenario02() {
+             this.dto = new SolicitacaoAdocaoDto(10L, 20L, "MOTIVO");
+             BDDMockito.given(petRepository.getReferenceById(dto.idPet())).willReturn(pet);
+             BDDMockito.given(tutorRepository.getReferenceById(dto.idTutor())).willReturn(tutor);
+             BDDMockito.given(pet.getAbrigo()).willReturn(abrigo);
+
+             validacoes.add(validador1);
+             validacoes.add(validador2);
+
+             service.solicitar(dto);
+
+
+             then(validador1).should().validar(dto);
+             then(validador2).should().validar(dto);
+
+         }
+---------------------------------------------------------------------------------------------------------------------------------
+
+Mock
+Um mock é um objeto simulado que substitui um objeto real durante a execução dos testes.
+Ele é criado usando o Mockito e permite definir comportamentos esperados e verificar
+interações com o objeto simulado. Os mocks são úteis quando você deseja isolar o código
+sob teste de suas dependências, fornecendo respostas predefinidas para os métodos chamados
+durante os testes.
+
+Spy
+Um spy, por outro lado, é um objeto real que é usado durante os testes, mas também permite
+a observação de seu comportamento. Ao contrário dos mocks, os spies mantêm o comportamento
+original do objeto sendo espionado, a menos que seja especificamente substituído.
+
+
+Nessa aula, você aprendeu como:
+Testar uma classe Service, que coordena o fluxo de regras de negócio na aplicação;
+Utilizar o recurso de ArgumentCaptor, do Mockito, para recuperar parâmetros em mocks;
+Utilizar um spy no Mockito e sua diferença em relação a um mock.
+
+service.solicitar(dto);-> metodo sendo chamado
+-------------------------------------Controller Automatizado------------------------------------------------------------------------
+Para dispara json no controle
+instanciando o controller
+
+
+@Autowired
+private MockMvc mvc;-> para fazer injeção, mas para conseguir fazer injeção precisa do autowired
+e tem notação encima da class que vc precisa fazer
+@SpringBootTest -> avisando que é spring boot de test
+@AutoConfigureMockMvc-> para avisar para fazer injeção de dados no mockmvc
+
+
+        mvc.perform()-> metodo que dispara requisição no controller para testa
+        aqui precisa, saber tipo qual é tipo, se post, get, etc,
+        SE TEM ALGUM cabecario, url, etc
+
+         var response = mvc.perform(
+                        post("/adocoes")
+                                .content(json)
+                                .contentType(MediaType.APPLICATION_JSON)
+
+                ).andReturn().getResponse();
+                //ASSERT
+
+mvc.perform(
+    post("/adocoes")
+    .content(json)
+    .contentType(MediaType.APPLICATION_JSON)
+
+    ).andReturn().getResponse();
+    mvc.perform(-> para simular uma requisção
+    post("/adocoes")-> como é metodo e como ele vai ser acessado
+ .content(json)
+     .contentType(MediaType.APPLICATION_JSON)-> se contem algo no corpo de requisição, e tipo que vai ser retornado
+     que no caso json
+ .andReturn().getResponse();-> para retorna tipo de resposta em response
+
+Assertions.assertEquals(400,response.getStatus());-> comparando para ver se resposta
+se for so isso integra banco de dados tudo mais
+-----------------------------------------------------------------------------------------------------------------------------
+para sumiluar teste de unidade, não de integração com banco de dados
+
+@MockBean
+private AdocaoService service;-> ele vai ver com essa anotação
+que para simular service para não acessar service de verdade
+---------------------------------------------------------------------------------------------------------------------------------
+
+JacksonTester
+
+
+String json = """
+    {
+        "idPet": 1,
+        "idTutor": 1,
+        "motivo": "Motivo qualquer"
+    }
+    """;
+
+//Objeto dto representando o JSON anterior:
+SolicitacaoAdocaoDto dto = new SolicitacaoAdocaoDto(1l, 1l, "Motivo qualquer");
+
+@SpringBootTest
+@AutoConfigureMockMvc
+@AutoConfigureJsonTesters
+class AdocaoControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private AdocaoService adocaoService;
+
+    @Autowired
+    private JacksonTester<SolicitacaoAdocaoDto> jsonDto;
+
+    @Test
+    void deveriaDevolverCodigo200ParaRequsisicaoDeSolicitarAdocaoComDadosValidos() throws Exception {
+        //ARRANGE
+        SolicitacaoAdocaoDto dto = new SolicitacaoAdocaoDto(1l, 1l, "Motivo qualquer");
+
+        //ACT
+        MockHttpServletResponse response = mockMvc.perform(
+                post("/adocoes")
+                        .content(jsonDto.write(dto).getJson())
+                        .contentType(MediaType.APPLICATION_JSON)
+        ).andReturn().getResponse();
+
+        //ASSERT
+        assertEquals(200, response.getStatus());
+        assertEquals("Adoção solicitada com sucesso!", response.getContentAsString());
+    }
+
+    // outros testes omitidos
+}
+
+
+
+
+
+
+
+
+Nessa aula, escrevemos os testes de um controller utilizando a classe MockMvc do Spring,
+que simula requisições para a API. Essa abordagem é válida e muito utilizada nos projetos,
+porém, ela utiliza um objeto mock para simular requisições, sem de fato disparar requisições
+reais para a API.
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class AdocaoControllerIntegrationTest {
+
+    @Autowired
+    private TestRestTemplate restTemplate;
+
+    @Test
+    void deveriaDevolverCodigo400ParaSolicitacaoDeAdocaoComErros() {
+        // ARRANGE
+        String json = "{}";
+
+        // ACT
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/adocoes",
+                HttpMethod.POST,
+                new HttpEntity<>(json, MediaType.APPLICATION_JSON),
+                Void.class
+        );
+
+        // ASSERT
+        Assertions.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
+    void deveriaDevolverCodigo200ParaSolicitacaoDeAdocaoSemErros() {
+        // ARRANGE
+        String json = """
+                {
+                    "idPet": 1,
+                    "idTutor": 1,
+                    "motivo": "Motivo qualquer"
+                }
+                """;
+
+        // ACT
+        ResponseEntity<Void> response = restTemplate.exchange(
+                "/adocoes",
+                HttpMethod.POST,
+                new HttpEntity<>(json, MediaType.APPLICATION_JSON),
+                Void.class
+        );
+
+        // ASSERT
+        Assertions.assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+}
+
+É possível escrever o mesmo teste utilizando uma outra abordagem, na qual são disparadas
+requisições reais para a API, utilizando a classe TestRestTemplate do Spring, ao invés de
+utilizar a classe MockMVC.
+
+
+Como serão disparadas requisições reais para a API, ela precisa estar em execução em
+alguma porta. No código anterior, a anotação @SpringBootTest está com o argumento
+webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, que configura o teste para
+usar uma porta aleatória para realizar as chamadas HTTP reais. Isso é útil, pois evita
+que tenhamos que escolher uma porta que já pode estar em uso no sistema operacional
+
+
+O TestRestTemplate é uma classe que faz parte do módulo de teste do Spring Boot e
+permite que você realize solicitações HTTP para a API em execução durante os testes.
+Observe que, o método perform() do MockMvc, foi substituído pelo método exchange() do
+TestRestTemplate para realizar as chamadas HTTP reais. As asserções dos códigos de status
+de resposta também foram adaptadas para usar os valores de HttpStatus.
+
+
+
+
+
+
+
+
+-------------------------------------------------OUTROS TIPOS DE TEST---------------------------------------------------------------------------------------------------------------
+teste
+teste automatizado com junit,mockito,hamcrest,assertJ
+
+
+@DataJpaTest-> para dizer que pesquisa de jpa test
+
+
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+aqui diz para teste automatizado que para usar banco de dados da maquina mysql, oq vamos ultilizar
+por que se não dizer vai usar o em memoria qualquer um que tem
+
+
+
+para vc testa suas coisa em diferente banco de dados, não mesmo do desvolvimento
+vc pode cria um  application-test.properties pode cria quantos quiser
+
+@ActiveProfiles("test")
+dizendo qual properties tem usar
+
+@DisplayName("AQUI SERVE PARA DESCREVE PARA QUE SERVE METODO ")
+
+
+
+@Autowired
+private TestEntityManager em;
+para um entiyManager de test
+
+assertThat(user).isNull(); -> aqui para ver se esta retornado certo,acertivo tem varios metodos para comparar
+etc
+
+
+@Test
+@DisplayName("Deveria devolver medico quando ele estiver disponivel na data")
+void escolherMedicoAleatorioLivreNaDataCenario2() {
+given" ou "arrange"
+     var proximaSegundaAs10 = LocalDate.now()
+                    .with(TemporalAdjusters.next(DayOfWeek.MONDAY))
+                    .atTime(10, 0);
+    var medico = cadastrarMedico("Medico", "medico@voll.med", "123456", Especialidade.CARDIOLOGIA);
+
+
+
+when" ou "act
+
+    var medicoLivre = medicoRepository.escolherMedicoAleatorioLivreNaData(Especialidade.CARDIOLOGIA, proximaSegundaAs10);
+
+
+
+"then" ou "assert".
+
+    assertThat(medicoLivre).isEqualTo(medico);
+}
+
+package com.rafael.demo.APIWeb.appointmentscheduling.repository;
+
+import com.rafael.demo.APIWeb.user.repository.UserRepository;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.test.context.ActiveProfiles;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@ActiveProfiles("test")
+class ConsultationRepositoryTest {
+    @Autowired
+    private UserRepository repository;
+    @Autowired
+    private TestEntityManager em;
+    @Test
+    @DisplayName("AQUI SERVE PARA DESCREVE PARA QUE SERVE METODO ")
+    void findByDoctorAndConsultationDateBetween() {
+       var user = repository.findByLogin("rafael.alves.@vaz");
+        assertThat(user).isNull();
+
+    }
+}
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+teste controler
+
+@SpringBootTest- > para dizer que ta testando um controler
+
+
+@Autowired
+private MockMvc mvc;->  simula requisção http usando padrão mvc
+
+
+@AutoConfigureMockMvc-> para coseguir injetar precisa add isso la na class
+
+
+mvc.perform()-> vai performar um requisição na api
+
+@WithMockUser-> simula que usario esta logado isso diz para spring que usario esta logado
+mvc.perform-> simula uma requisção na api
+
+mvc.perform(delete("/Doctor/exclusion/7"))-.aqui pega o tipo do metodo que vc quer testa metodohttp-> delete, post, get etc
+e url
+
+.andReturn().getResponse();-> primeira parte pegar return, segunda pega response salva response
+
+assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+response.getStatus()-> aqui pega status, isEqualTo aqui compra
+HttpStatus.BAD_REQUEST.value()-> aqui pega status o oq vc espera retorna e valor dele com velues
+HttpStatus.BAD_REQUEST.value()-> aqui pega status o oq vc espera retorna e valor dele com velues
+
+
+package com.rafael.demo.APIWeb.Doctor.Controller;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
+
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+class DoctorControllerTest {
+@Autowired
+private MockMvc mvc;
+
+    @Test
+    @DisplayName("ERRO SE NÃO ENCONTRA")
+    @WithMockUser
+    void exclusion() throws Exception {
+       var response =  mvc.perform(delete("/Doctor/exclusion/7"))
+                .andReturn().getResponse();
+
+       assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+    }
+}
+----------------------------------------------------------------------------------------------------------------
+testando codigo 200
+
+@AutoConfigureJsonTesters -> para dizer que vai trabalha com json test para autoconfigura para test em json
+@Autowired
+private JacksonTester<DataDoctor> dataDoctorjsonTest;
+@Autowired
+private JacksonTester<ListDoctor> listDoctorjsontest;
+aqui para simular dtos que nos utilizamos mesmo que usamos no controler
+@MockBean
+private ServiceDoutor doutor;
+esse metodos diz para test para o mokito, spring que não precisa injetar dentro do atributo
+*------
+
+.contentType(MediaType.APPLICATION_JSON)-> para dizer para servidor simulado que estavamos levando dados tipo json, mas pode ser N tipos que vc tver retornado
+.content()-> aqui faz leva json leva dados do json JacksonTester -> isso leva json , mostra que json, trasforma seu dto ou sua class
+em um json
+
+.contentType(MediaType.APPLICATION_JSON)
+                .content(dadosAgendamentoConsultaJson.write(
+                    new DadosAgendamentoConsulta(2l, 5l, data, especialidade)
+                ).getJson())
+dadosAgendamentoConsultaJson-> aqui  atributo jeckson write()-> escreve o com class e com meto getJson()-< trasforma em json
+como pode trasforma em outras coisas
+private JacksonTester<Dadosagendamento> dadosAgendamentoConsultaJson;
+ .andReturn().getResponse)-> eretorna algo e pega response dete retorno
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
+aqui mostra que metodo http esperado foi certo e faz testes ve que deu tudo certo
+
+
+
+
+
+
+
+
+  var jsonEsperado = dadosDetalhamentoConsultaJson.write(
+        dadosDetalhamento
+    ).getJson();
+    aqui mesma coisa pega jeckson e escreve dentro retorn em string
+
+
+    assertThat(response.getContentAsString()).isEqualTo(jsonEsperado);
+compra que resultado um vai ser igual resultado com isEqualTo
+
+
+
+@AutoConfigureJsonTesters
+precisa do autoConfig para injetar as coisas no jekeson
+
+
+
+
+
+
+
+
+@MockBean
+private ServiceDoutor doutor;
+aqui faz look diz para spring de test que ele não pode injetar depednecia aqui
+
+
+
+
+var dadosDetalhamento = new DadosDetalhamentoConsulta(null, 2l, 5l, data);
+    when(agendaDeConsultas.agendar(any())).thenReturn(dadosDetalhamento);
+
+   when(agendaDeConsultas.agendar(any())).thenReturn(dadosDetalhamento);
+aqui diz quando a agenda for chamada(any())). espera que retorna dadosDetelhamento consulta
+
+
+    var jsonEsperado = dadosDetalhamentoConsultaJson.write(
+        dadosDetalhamento
+    ).getJson();
+
+    assertThat(response.getContentAsString()).isEqualTo(jsonEsperado);
+    faz comperação dele
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-
+@Autowired
+private JacksonTester<ListDoctor> listDoctorjsontest;
+// Trecho de código suprimido
+
+@Test
+@DisplayName("Deveria devolver codigo http 200 quando informações estão validas")
+@WithMockUser
+void agendar_cenario2() throws Exception {
+    var data - LocalDateTime.now().plusHours(1);
+    var especialidade = Especialidade.CARDIOLOGIA;
+
+    var dadosDetalhamento = new DadosDetalhamentoConsulta(null, 2l, 5l, data);
+    when(agendaDeConsultas.agendar(any())).thenReturn(dadosDetalhamento);
+
+    var response = mvc
+        .perform(
+            post("/consultas")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(dadosAgendamentoConsultaJson.write(
+                    new DadosAgendamentoConsulta(2l, 5l, data, especialidade)
+                ).getJson())
+        )
+        .andReturn().getResponse);
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
+
+    var jsonEsperado = dadosDetalhamentoConsultaJson.write(
+        dadosDetalhamento
+    ).getJson();
+
+    assertThat(response.getContentAsString()).isEqualTo(jsonEsperado);
+}
+
+
+
+
+
+
+
+
+ex codigo de test
+@SpringBootTest
+@AutoConfigureMockMvc
+@AutoConfigureJsonTesters
+class MedicoControllerTest {
+
+    @Autowired
+    private MockMvc mvc;
+
+    @Autowired
+    private JacksonTester<DadosCadastroMedico> dadosCadastroMedicoJson;
+
+    @Autowired
+    private JacksonTester<DadosDetalhamentoMedico> dadosDetalhamentoMedicoJson;
+
+    @MockBean
+    private MedicoRepository repository;
+
+}
+
+@Test
+@DisplayName("Deveria devolver codigo http 400 quando informacoes estao invalidas")
+@WithMockUser
+void cadastrar_cenario1() throws Exception {
+    var response = mvc
+.perform(post("/medicos"))
+            .andReturn().getResponse();
+
+    assertThat(response.getStatus())
+.isEqualTo(HttpStatus.BAD_REQUEST.value());
+}
+
+
+
+
+
+
+
+@Test
+@DisplayName("Deveria devolver codigo http 200 quando informacoes estao validas")
+@WithMockUser
+void cadastrar_cenario2() throws Exception {
+    var dadosCadastro = new DadosCadastroMedico(
+            "Medico",
+            "medico@voll.med",
+            "61999999999",
+            "123456",
+            Especialidade.CARDIOLOGIA,
+            dadosEndereco());
+
+    when(repository.save(any())).thenReturn(new Medico(dadosCadastro));
+
+    var response = mvc
+            .perform(post("/medicos")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(dadosCadastroMedicoJson.write(dadosCadastro).getJson()))
+            .andReturn().getResponse();
+
+    var dadosDetalhamento = new DadosDetalhamentoMedico(
+            null,
+            dadosCadastro.nome(),
+            dadosCadastro.email(),
+            dadosCadastro.crm(),
+            dadosCadastro.telefone(),
+            dadosCadastro.especialidade(),
+            new Endereco(dadosCadastro.endereco())
+    );
+    var jsonEsperado = dadosDetalhamentoMedicoJson.write(dadosDetalhamento).getJson();
+
+    assertThat(response.getStatus()).isEqualTo(HttpStatus.CREATED.value());
+    assertThat(response.getContentAsString()).isEqualTo(jsonEsperado);
+}
+
+
+
+
+
+private DadosEndereco dadosEndereco() {
+    return new DadosEndereco(
+            "rua xpto",
+            "bairro",
+            "00000000",
+            "Brasilia",
+            "DF",
+            null,
+            null
+    );
+}
+
+Nesta aula, você aprendeu como:
+Escrever testes automatizados em uma aplicação com Spring Boot;
+Escrever testes automatizados de uma interface Repository, seguindo a estratégia de usar o mesmo banco de dados que a aplicação utiliza;
+Sobrescrever propriedades do arquivo application.properties, criando outro arquivo chamado application-test.properties que seja carregado apenas ao executar os testes, utilizando para isso a anotação @ActiveProfiles;
+Escrever testes automatizados de uma classe Controller, utilizando a classe MockMvc para simular requisições na API;
+Testar cenários de erro 400 e código 200 no teste de uma classe controller.
+
+
+
+
+
