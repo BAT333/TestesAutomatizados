@@ -58,5 +58,6 @@ class AdocaoControllerTest {
         ).andReturn().getResponse();
         //ASSERT
         Assertions.assertEquals(200,response.getStatus());
+        Assertions.assertEquals("Adoção solciitada com sucesso!",response.getContentAsString());
     }
 }
